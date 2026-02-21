@@ -1,12 +1,19 @@
+import time
+import logging
+
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 
 from config import OPENAI_API_KEY, CHAT_MODEL
 from agents.state import AgentState
 
+logger = logging.getLogger(__name__)
+
 
 def review_code(state: AgentState) -> dict:
     """Code Reviewer agent node. Reviews generated code and decides APPROVE or REVISE."""
+    logger.info("Reviewer  iteration=%d  code_len=%d", state.get("iteration", 0), len(state.get("generated_code", "")))
+
     llm = ChatOpenAI(model=CHAT_MODEL, api_key=OPENAI_API_KEY, temperature=0)
 
     system_content = """You are an expert code reviewer. Your job is to review generated code for quality and correctness.
@@ -44,7 +51,9 @@ Important: Only request revision for real issues. Minor style preferences are no
         HumanMessage(content=user_content),
     ]
 
+    start = time.time()
     response = llm.invoke(messages)
+    duration_ms = (time.time() - start) * 1000
     content = response.content
 
     # Parse decision and feedback
@@ -59,6 +68,8 @@ Important: Only request revision for real issues. Minor style preferences are no
     # Extract feedback after "FEEDBACK:" marker
     if "FEEDBACK:" in content:
         feedback = content.split("FEEDBACK:", 1)[1].strip()
+
+    logger.info("Reviewer  decision=%s  duration=%.0fms  feedback=%.120s", decision, duration_ms, feedback)
 
     return {
         "review_decision": decision,

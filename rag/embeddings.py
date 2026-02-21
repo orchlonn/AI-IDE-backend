@@ -1,3 +1,6 @@
+import time
+import logging
+
 from openai import OpenAI
 from supabase import create_client
 
@@ -6,6 +9,8 @@ from config import (
     EMBEDDING_MODEL, CHUNK_SIZE, CHUNK_OVERLAP,
     EMBEDDING_BATCH_SIZE, INSERT_BATCH_SIZE,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def chunk_file(file_path: str, content: str) -> list[dict]:
@@ -47,6 +52,7 @@ def chunk_project(file_contents: dict[str, str]) -> list[dict]:
 
 async def index_project(project_id: str) -> int:
     """Index a project's files into vector embeddings. Returns chunk count."""
+    logger.info("Indexing project  id=%s", project_id)
     openai = OpenAI(api_key=OPENAI_API_KEY)
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -56,7 +62,10 @@ async def index_project(project_id: str) -> int:
         raise ValueError("Project not found")
 
     file_contents: dict[str, str] = result.data.get("file_contents", {})
+    logger.info("Project loaded  files=%d", len(file_contents))
+
     chunks = chunk_project(file_contents)
+    logger.info("Chunking done  total_chunks=%d", len(chunks))
 
     if not chunks:
         return 0
@@ -65,15 +74,20 @@ async def index_project(project_id: str) -> int:
     embeddings: list[list[float]] = []
     for i in range(0, len(chunks), EMBEDDING_BATCH_SIZE):
         batch = chunks[i:i + EMBEDDING_BATCH_SIZE]
+        start = time.time()
         res = openai.embeddings.create(
             model=EMBEDDING_MODEL,
             input=[c["content"] for c in batch],
         )
+        duration_ms = (time.time() - start) * 1000
         for item in res.data:
             embeddings.append(item.embedding)
+        logger.info("Embeddings batch  %d/%d  batch_size=%d  duration=%.0fms",
+                     i + len(batch), len(chunks), len(batch), duration_ms)
 
     # Delete old chunks
     supabase.table("code_chunks").delete().eq("project_id", project_id).execute()
+    logger.info("Old chunks deleted  project=%s", project_id)
 
     # Insert new chunks in batches
     rows = [
@@ -90,5 +104,7 @@ async def index_project(project_id: str) -> int:
     for i in range(0, len(rows), INSERT_BATCH_SIZE):
         batch = rows[i:i + INSERT_BATCH_SIZE]
         supabase.table("code_chunks").insert(batch).execute()
+        logger.info("Insert batch  %d/%d", i + len(batch), len(rows))
 
+    logger.info("Indexing complete  project=%s  chunks=%d", project_id, len(chunks))
     return len(chunks)

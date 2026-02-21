@@ -1,3 +1,5 @@
+import logging
+
 from langgraph.graph import StateGraph, END
 
 from agents.state import AgentState
@@ -6,24 +8,32 @@ from agents.reviewer import review_code
 from rag.retriever import retrieve_context
 from config import MAX_AGENT_ITERATIONS
 
+logger = logging.getLogger(__name__)
+
 
 def retrieve_context_node(state: AgentState) -> dict:
     """Retrieve RAG context for the user's prompt."""
+    logger.info("RAG retrieve  project=%s  query=%.80s", state["project_id"], state["user_prompt"])
     context = retrieve_context(state["project_id"], state["user_prompt"])
+    logger.info("RAG retrieve  context_len=%d", len(context))
     return {"rag_context": context}
 
 
 def should_continue(state: AgentState) -> str:
     """Decide whether to loop back to generator or finish."""
     if state["review_decision"] == "APPROVE":
+        logger.info("Routing  APPROVED at iteration %d", state["iteration"])
         return "approved"
     if state["iteration"] >= MAX_AGENT_ITERATIONS:
+        logger.warning("Routing  MAX_ITERATIONS reached (%d) — finalizing with last output", state["iteration"])
         return "max_iterations"
+    logger.info("Routing  REVISE → looping back to generator (iteration %d)", state["iteration"])
     return "revise"
 
 
 def finalize(state: AgentState) -> dict:
     """Produce final response from the approved/final generated code."""
+    logger.info("Finalize  response_len=%d  total_iterations=%d", len(state["generated_code"]), state["iteration"])
     return {"final_response": state["generated_code"]}
 
 
@@ -67,4 +77,6 @@ def build_agent_graph() -> StateGraph:
 
 
 # Pre-compiled graph instance
+logger.info("Building agent graph...")
 agent_graph = build_agent_graph()
+logger.info("Agent graph compiled")

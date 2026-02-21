@@ -1,12 +1,15 @@
 import asyncio
 import os
+import time
 import tempfile
+import logging
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -23,6 +26,8 @@ async def run_terminal(req: TerminalRequest):
     if not req.command:
         raise HTTPException(status_code=400, detail="command is required")
 
+    logger.info("Terminal request  command=%.120s  cwd=%s", req.command, req.cwd)
+
     actual_command = req.command
     temp_dir = None
 
@@ -32,10 +37,12 @@ async def run_terminal(req: TerminalRequest):
         file_path = os.path.join(temp_dir, req.file["name"])
         Path(file_path).write_text(req.file["content"], encoding="utf-8")
         actual_command = req.command.replace(f'"{req.file["name"]}"', f'"{file_path}"')
+        logger.debug("Temp file created: %s", file_path)
 
     working_dir = temp_dir or req.cwd or os.environ.get("HOME", "/")
 
     async def stream_output():
+        start = time.time()
         process = await asyncio.create_subprocess_shell(
             actual_command,
             stdout=asyncio.subprocess.PIPE,
@@ -61,13 +68,18 @@ async def run_terminal(req: TerminalRequest):
                 yield chunk
 
         exit_code = await process.wait()
+        duration_ms = (time.time() - start) * 1000
+
+        logger.info("Terminal done  exit_code=%d  duration=%.0fms  command=%.80s",
+                     exit_code, duration_ms, req.command)
 
         # Clean up temp file
         if temp_dir and req.file and req.file.get("name"):
             try:
                 os.unlink(os.path.join(temp_dir, req.file["name"]))
+                logger.debug("Temp file cleaned up: %s", temp_dir)
             except OSError:
-                pass
+                logger.warning("Failed to clean up temp file: %s", temp_dir)
 
         yield f"\n__EXIT_CODE__:{exit_code}\n"
 
