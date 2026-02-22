@@ -1,8 +1,10 @@
 import time
 import logging
+from typing import Literal
 
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
+from pydantic import BaseModel, Field
 
 from config import OPENAI_API_KEY, CHAT_MODEL
 from agents.state import AgentState
@@ -10,11 +12,18 @@ from agents.state import AgentState
 logger = logging.getLogger(__name__)
 
 
+class ReviewOutput(BaseModel):
+    """Structured output for the reviewer agent."""
+    decision: Literal["APPROVE", "REVISE"] = Field(description="Whether to approve the code or request revision")
+    feedback: str = Field(description="Explanation of the decision with specific issues if revising")
+
+
 def review_code(state: AgentState) -> dict:
     """Code Reviewer agent node. Reviews generated code and decides APPROVE or REVISE."""
     logger.info("[REVIEWER] Reviewing code (iteration %d, %d chars)...", state.get("iteration", 0), len(state.get("generated_code", "")))
 
     llm = ChatOpenAI(model=CHAT_MODEL, api_key=OPENAI_API_KEY, temperature=0)
+    structured_llm = llm.with_structured_output(ReviewOutput)
 
     system_content = """You are an expert code reviewer. Your job is to review generated code for quality and correctness.
 
@@ -25,17 +34,7 @@ Evaluate the code on:
 4. **Security**: Are there any obvious security vulnerabilities?
 5. **Best Practices**: Does it follow language conventions and best practices?
 
-You MUST respond in EXACTLY this format:
-
-DECISION: APPROVE
-FEEDBACK: The code looks good. [brief explanation]
-
-OR
-
-DECISION: REVISE
-FEEDBACK: [specific issues that need to be fixed, be actionable and clear]
-
-Important: Only request revision for real issues. Minor style preferences are not grounds for revision. If the code is functionally correct and reasonably clean, APPROVE it."""
+Important: Only request revision for real issues. Minor style preferences are not grounds for revision. If the code is functionally correct and reasonably clean, approve it."""
 
     user_content = f"""## User's Original Request
 {state['user_prompt']}
@@ -52,27 +51,13 @@ Important: Only request revision for real issues. Minor style preferences are no
     ]
 
     start = time.time()
-    response = llm.invoke(messages)
+    response = structured_llm.invoke(messages)
     duration_ms = (time.time() - start) * 1000
-    content = response.content
 
-    # Parse decision and feedback
-    decision = "APPROVE"
-    feedback = content
-
-    if "DECISION: REVISE" in content:
-        decision = "REVISE"
-    elif "DECISION: APPROVE" in content:
-        decision = "APPROVE"
-
-    # Extract feedback after "FEEDBACK:" marker
-    if "FEEDBACK:" in content:
-        feedback = content.split("FEEDBACK:", 1)[1].strip()
-
-    logger.info("[REVIEWER] Decision: %s (%.0fms)", decision, duration_ms)
-    logger.info("[REVIEWER] Feedback: %s", feedback[:150])
+    logger.info("[REVIEWER] Decision: %s (%.0fms)", response.decision, duration_ms)
+    logger.info("[REVIEWER] Feedback: %s", response.feedback[:150])
 
     return {
-        "review_decision": decision,
-        "review_feedback": feedback,
+        "review_decision": response.decision,
+        "review_feedback": response.feedback,
     }
