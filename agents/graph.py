@@ -5,6 +5,8 @@ from langgraph.graph import StateGraph, END
 from agents.state import AgentState
 from agents.generator import generate_code
 from agents.reviewer import review_code
+from agents.router import route_task
+from agents.planner import plan_code
 from rag.retriever import retrieve_context
 from config import MAX_AGENT_ITERATIONS
 
@@ -17,6 +19,13 @@ def retrieve_context_node(state: AgentState) -> dict:
     context = retrieve_context(state["project_id"], state["user_prompt"])
     logger.info("RAG retrieve  context_len=%d", len(context))
     return {"rag_context": context}
+
+
+def route_by_complexity(state: AgentState) -> str:
+    """Route to planner or directly to generator based on task complexity."""
+    complexity = state.get("task_complexity", "simple")
+    logger.info("Routing  complexity=%s", complexity)
+    return complexity
 
 
 def should_continue(state: AgentState) -> str:
@@ -41,7 +50,10 @@ def build_agent_graph() -> StateGraph:
     """Build the LangGraph state graph for the code generation pipeline.
 
     Flow:
-        START → retrieve_context → generate_code → review_code →
+        START → retrieve_context → route_task →
+            (simple)  → generate_code → review_code → ...
+            (complex) → plan_code → generate_code → review_code → ...
+        review_code →
             (APPROVE or max iterations) → finalize → END
             (REVISE) → generate_code (loop)
     """
@@ -49,6 +61,8 @@ def build_agent_graph() -> StateGraph:
 
     # Add nodes
     graph.add_node("retrieve_context", retrieve_context_node)
+    graph.add_node("route_task", route_task)
+    graph.add_node("plan_code", plan_code)
     graph.add_node("generate_code", generate_code)
     graph.add_node("review_code", review_code)
     graph.add_node("finalize", finalize)
@@ -56,8 +70,23 @@ def build_agent_graph() -> StateGraph:
     # Set entry point
     graph.set_entry_point("retrieve_context")
 
-    # Add edges
-    graph.add_edge("retrieve_context", "generate_code")
+    # RAG → Router
+    graph.add_edge("retrieve_context", "route_task")
+
+    # Router → conditional: skip or go through planner
+    graph.add_conditional_edges(
+        "route_task",
+        route_by_complexity,
+        {
+            "simple": "generate_code",
+            "complex": "plan_code",
+        },
+    )
+
+    # Planner → Generator
+    graph.add_edge("plan_code", "generate_code")
+
+    # Generator → Reviewer
     graph.add_edge("generate_code", "review_code")
 
     # Conditional edge: review → finalize or loop back to generator

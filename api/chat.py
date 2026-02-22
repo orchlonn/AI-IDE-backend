@@ -43,6 +43,8 @@ async def chat(req: ChatRequest):
         "current_file_path": current_path,
         "current_file_content": current_content,
         "conversation_history": req.history,
+        "task_complexity": "",
+        "plan": "",
         "generated_code": "",
         "review_feedback": "",
         "review_decision": "",

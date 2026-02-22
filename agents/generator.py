@@ -34,6 +34,11 @@ Rules:
         logger.debug("Generator  RAG context length: %d chars", len(state["rag_context"]))
         system_content += f"\n\n## Related Code Context\n{state['rag_context']}"
 
+    # If there's a plan from the planner agent, include it
+    if state.get("plan"):
+        logger.info("Generator  following implementation plan (%d chars)", len(state["plan"]))
+        system_content += f"\n\n## Implementation Plan\nFollow this plan created by the architect. Implement each step precisely:\n{state['plan']}"
+
     # If there's review feedback from a previous iteration, include it
     if state.get("review_feedback") and state["iteration"] > 0:
         logger.info("Generator  applying review feedback from iteration %d", state["iteration"])

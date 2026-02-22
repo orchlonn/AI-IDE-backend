@@ -11,6 +11,10 @@ class AgentState(TypedDict):
     current_file_content: str
     conversation_history: list[dict]
 
+    # Router + Planner state
+    task_complexity: Literal["simple", "complex"]
+    plan: str
+
     # Agent working state
     generated_code: str
     review_feedback: str

@@ -21,6 +21,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 
 # Models
 CHAT_MODEL = "gpt-4o"
+ROUTER_MODEL = "gpt-4o-mini"
 EMBEDDING_MODEL = "text-embedding-3-small"
 
 # RAG settings
