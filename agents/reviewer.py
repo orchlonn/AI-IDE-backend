@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 def review_code(state: AgentState) -> dict:
     """Code Reviewer agent node. Reviews generated code and decides APPROVE or REVISE."""
-    logger.info("Reviewer  iteration=%d  code_len=%d", state.get("iteration", 0), len(state.get("generated_code", "")))
+    logger.info("[REVIEWER] Reviewing code (iteration %d, %d chars)...", state.get("iteration", 0), len(state.get("generated_code", "")))
 
     llm = ChatOpenAI(model=CHAT_MODEL, api_key=OPENAI_API_KEY, temperature=0)
 
@@ -69,7 +69,8 @@ Important: Only request revision for real issues. Minor style preferences are no
     if "FEEDBACK:" in content:
         feedback = content.split("FEEDBACK:", 1)[1].strip()
 
-    logger.info("Reviewer  decision=%s  duration=%.0fms  feedback=%.120s", decision, duration_ms, feedback)
+    logger.info("[REVIEWER] Decision: %s (%.0fms)", decision, duration_ms)
+    logger.info("[REVIEWER] Feedback: %s", feedback[:150])
 
     return {
         "review_decision": decision,

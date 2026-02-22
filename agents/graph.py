@@ -15,34 +15,37 @@ logger = logging.getLogger(__name__)
 
 def retrieve_context_node(state: AgentState) -> dict:
     """Retrieve RAG context for the user's prompt."""
-    logger.info("RAG retrieve  project=%s  query=%.80s", state["project_id"], state["user_prompt"])
+    logger.info("[1/RAG] Retrieving context for project=%s", state["project_id"])
     context = retrieve_context(state["project_id"], state["user_prompt"])
-    logger.info("RAG retrieve  context_len=%d", len(context))
+    logger.info("[1/RAG] Retrieved %d chars of context", len(context))
     return {"rag_context": context}
 
 
 def route_by_complexity(state: AgentState) -> str:
     """Route to planner or directly to generator based on task complexity."""
     complexity = state.get("task_complexity", "simple")
-    logger.info("Routing  complexity=%s", complexity)
+    if complexity == "complex":
+        logger.info("[2/ROUTER] --> COMPLEX: routing to Planner first")
+    else:
+        logger.info("[2/ROUTER] --> SIMPLE: skipping Planner, going straight to Generator")
     return complexity
 
 
 def should_continue(state: AgentState) -> str:
     """Decide whether to loop back to generator or finish."""
     if state["review_decision"] == "APPROVE":
-        logger.info("Routing  APPROVED at iteration %d", state["iteration"])
+        logger.info("[REVIEWER] --> APPROVED at iteration %d, finalizing", state["iteration"])
         return "approved"
     if state["iteration"] >= MAX_AGENT_ITERATIONS:
-        logger.warning("Routing  MAX_ITERATIONS reached (%d) — finalizing with last output", state["iteration"])
+        logger.warning("[REVIEWER] --> MAX ITERATIONS reached (%d), finalizing with last output", state["iteration"])
         return "max_iterations"
-    logger.info("Routing  REVISE → looping back to generator (iteration %d)", state["iteration"])
+    logger.info("[REVIEWER] --> REVISE: sending back to Generator (iteration %d)", state["iteration"])
     return "revise"
 
 
 def finalize(state: AgentState) -> dict:
     """Produce final response from the approved/final generated code."""
-    logger.info("Finalize  response_len=%d  total_iterations=%d", len(state["generated_code"]), state["iteration"])
+    logger.info("[FINAL] Response ready (%d chars, %d iterations)", len(state["generated_code"]), state["iteration"])
     return {"final_response": state["generated_code"]}
 
 
@@ -106,6 +109,4 @@ def build_agent_graph() -> StateGraph:
 
 
 # Pre-compiled graph instance
-logger.info("Building agent graph...")
 agent_graph = build_agent_graph()
-logger.info("Agent graph compiled")

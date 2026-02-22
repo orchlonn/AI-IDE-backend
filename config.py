@@ -7,13 +7,17 @@ load_dotenv()
 # ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
-LOG_LEVEL = os.getenv("LOG_LEVEL", "DEBUG").upper()
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
 logging.basicConfig(
     level=LOG_LEVEL,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
+    format="%(asctime)s  %(message)s",
+    datefmt="%H:%M:%S",
 )
+
+# Silence noisy third-party loggers
+for _name in ("httpx", "httpcore", "openai", "urllib3", "uvicorn.access", "uvicorn.error", "fastapi"):
+    logging.getLogger(_name).setLevel(logging.WARNING)
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")

@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 def route_task(state: AgentState) -> dict:
     """Router agent node. Classifies the task as simple or complex."""
-    logger.info("Router  prompt=%.80s", state["user_prompt"])
+    logger.info("[2/ROUTER] Classifying task complexity...")
 
     llm = ChatOpenAI(model=ROUTER_MODEL, api_key=OPENAI_API_KEY, temperature=0)
 
@@ -63,6 +63,10 @@ REASON: [one sentence explanation]"""
     elif "COMPLEXITY: SIMPLE" in content:
         complexity = "simple"
 
-    logger.info("Router  decision=%s  duration=%.0fms  response=%s", complexity, duration_ms, content.strip())
+    # Extract reason
+    reason = ""
+    if "REASON:" in content:
+        reason = content.split("REASON:", 1)[1].strip()
+    logger.info("[2/ROUTER] Decision: %s (%.0fms) - %s", complexity.upper(), duration_ms, reason)
 
     return {"task_complexity": complexity}

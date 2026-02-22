@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 def plan_code(state: AgentState) -> dict:
     """Planner agent node. Creates an implementation plan for complex tasks."""
-    logger.info("Planner  prompt=%.80s", state["user_prompt"])
+    logger.info("[3/PLANNER] Creating implementation plan...")
 
     llm = ChatOpenAI(model=CHAT_MODEL, api_key=OPENAI_API_KEY, temperature=0)
 
@@ -35,7 +35,7 @@ Rules:
         system_content += f"\n\n## Currently Open File: {state['current_file_path']}\n{state['current_file_content']}"
 
     if state["rag_context"]:
-        logger.debug("Planner  RAG context length: %d chars", len(state["rag_context"]))
+        logger.debug("[3/PLANNER] RAG context: %d chars", len(state["rag_context"]))
         system_content += f"\n\n## Related Code Context\n{state['rag_context']}"
 
     messages = [SystemMessage(content=system_content)]
@@ -49,11 +49,10 @@ Rules:
 
     messages.append(HumanMessage(content=state["user_prompt"]))
 
-    logger.debug("Planner  sending %d messages to LLM", len(messages))
     start = time.time()
     response = llm.invoke(messages)
     duration_ms = (time.time() - start) * 1000
 
-    logger.info("Planner  done  plan_len=%d  duration=%.0fms", len(response.content), duration_ms)
+    logger.info("[3/PLANNER] Plan ready (%d chars, %.0fms)", len(response.content), duration_ms)
 
     return {"plan": response.content}

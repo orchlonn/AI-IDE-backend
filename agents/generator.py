@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 def generate_code(state: AgentState) -> dict:
     """Code Generator agent node. Generates code based on prompt + RAG context."""
     iteration = state.get("iteration", 0) + 1
-    logger.info("Generator  iteration=%d  prompt=%.80s", iteration, state["user_prompt"])
+    logger.info("[GENERATOR] Generating code (iteration %d)...", iteration)
 
     llm = ChatOpenAI(model=CHAT_MODEL, api_key=OPENAI_API_KEY, temperature=0)
 
@@ -31,17 +31,17 @@ Rules:
         system_content += f"\n\n## Currently Open File: {state['current_file_path']}\n{state['current_file_content']}"
 
     if state["rag_context"]:
-        logger.debug("Generator  RAG context length: %d chars", len(state["rag_context"]))
+        logger.debug("[GENERATOR] RAG context: %d chars", len(state["rag_context"]))
         system_content += f"\n\n## Related Code Context\n{state['rag_context']}"
 
     # If there's a plan from the planner agent, include it
     if state.get("plan"):
-        logger.info("Generator  following implementation plan (%d chars)", len(state["plan"]))
+        logger.info("[GENERATOR] Following Planner's implementation plan (%d chars)", len(state["plan"]))
         system_content += f"\n\n## Implementation Plan\nFollow this plan created by the architect. Implement each step precisely:\n{state['plan']}"
 
     # If there's review feedback from a previous iteration, include it
     if state.get("review_feedback") and state["iteration"] > 0:
-        logger.info("Generator  applying review feedback from iteration %d", state["iteration"])
+        logger.info("[GENERATOR] Applying Reviewer's feedback from iteration %d", state["iteration"])
         system_content += f"\n\n## Review Feedback (Iteration {state['iteration']})\nThe code reviewer found issues with your previous attempt. Address this feedback:\n{state['review_feedback']}"
 
     messages = [SystemMessage(content=system_content)]
@@ -55,12 +55,11 @@ Rules:
 
     messages.append(HumanMessage(content=state["user_prompt"]))
 
-    logger.debug("Generator  sending %d messages to LLM", len(messages))
     start = time.time()
     response = llm.invoke(messages)
     duration_ms = (time.time() - start) * 1000
 
-    logger.info("Generator  done  output_len=%d  duration=%.0fms", len(response.content), duration_ms)
+    logger.info("[GENERATOR] Code generated (%d chars, %.0fms)", len(response.content), duration_ms)
 
     return {
         "generated_code": response.content,
