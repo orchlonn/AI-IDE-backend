@@ -9,6 +9,9 @@ from config import (
 
 def retrieve_context(project_id: str, query: str) -> str:
     """Embed the query and retrieve relevant code chunks via pgvector similarity search."""
+    if not project_id:
+        return ""
+
     openai = OpenAI(api_key=OPENAI_API_KEY)
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
