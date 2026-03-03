@@ -1,10 +1,10 @@
 import time
 import logging
 
-from langchain_openai import ChatOpenAI
+from langchain_ollama import ChatOllama
 from langchain_core.messages import SystemMessage, HumanMessage
 
-from config import OPENAI_API_KEY, CHAT_MODEL
+from config import CHAT_MODEL, OLLAMA_BASE_URL
 from agents.state import AgentState
 
 logger = logging.getLogger(__name__)
@@ -14,7 +14,7 @@ def plan_code(state: AgentState) -> dict:
     """Planner agent node. Creates an implementation plan for complex tasks."""
     logger.info("[3/PLANNER] Creating implementation plan...")
 
-    llm = ChatOpenAI(model=CHAT_MODEL, api_key=OPENAI_API_KEY, temperature=0)
+    llm = ChatOllama(model=CHAT_MODEL, base_url=OLLAMA_BASE_URL, temperature=0)
 
     system_content = """You are an expert software architect and planner. Your job is to analyze a coding request and create a clear, actionable implementation plan that a code generator will follow.
 

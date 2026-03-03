@@ -24,8 +24,9 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 
 # Models
-CHAT_MODEL = "gpt-4.1-mini"
-ROUTER_MODEL = "gpt-4.1-mini"
+CHAT_MODEL = "llama3.1:8b"
+ROUTER_MODEL = "llama3.1:8b"
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 EMBEDDING_MODEL = "text-embedding-3-small"
 
 # RAG settings

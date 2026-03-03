@@ -2,11 +2,11 @@ import time
 import logging
 from typing import Literal
 
-from langchain_openai import ChatOpenAI
+from langchain_ollama import ChatOllama
 from langchain_core.messages import SystemMessage, HumanMessage
 from pydantic import BaseModel, Field
 
-from config import OPENAI_API_KEY, CHAT_MODEL
+from config import CHAT_MODEL, OLLAMA_BASE_URL
 from agents.state import AgentState
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ def review_code(state: AgentState) -> dict:
     """Code Reviewer agent node. Reviews generated code and decides APPROVE or REVISE."""
     logger.info("[REVIEWER] Reviewing code (iteration %d, %d chars)...", state.get("iteration", 0), len(state.get("generated_code", "")))
 
-    llm = ChatOpenAI(model=CHAT_MODEL, api_key=OPENAI_API_KEY, temperature=0)
+    llm = ChatOllama(model=CHAT_MODEL, base_url=OLLAMA_BASE_URL, temperature=0)
     structured_llm = llm.with_structured_output(ReviewOutput)
 
     system_content = """You are an expert code reviewer. Your job is to review generated code for quality and correctness.

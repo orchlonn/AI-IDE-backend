@@ -1,10 +1,10 @@
 import time
 import logging
 
-from langchain_openai import ChatOpenAI
+from langchain_ollama import ChatOllama
 from langchain_core.messages import SystemMessage, HumanMessage
 
-from config import OPENAI_API_KEY, CHAT_MODEL
+from config import CHAT_MODEL, OLLAMA_BASE_URL
 from agents.state import AgentState
 
 logger = logging.getLogger(__name__)
@@ -15,7 +15,7 @@ def generate_code(state: AgentState) -> dict:
     iteration = state.get("iteration", 0) + 1
     logger.info("[GENERATOR] Generating code (iteration %d)...", iteration)
 
-    llm = ChatOpenAI(model=CHAT_MODEL, api_key=OPENAI_API_KEY, temperature=0)
+    llm = ChatOllama(model=CHAT_MODEL, base_url=OLLAMA_BASE_URL, temperature=0)
 
     # Build system prompt
     system_content = """You are an expert code generator. Your job is to write high-quality, complete code based on the user's request.

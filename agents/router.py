@@ -2,11 +2,11 @@ import time
 import logging
 from typing import Literal
 
-from langchain_openai import ChatOpenAI
+from langchain_ollama import ChatOllama
 from langchain_core.messages import SystemMessage, HumanMessage
 from pydantic import BaseModel, Field
 
-from config import OPENAI_API_KEY, ROUTER_MODEL
+from config import ROUTER_MODEL, OLLAMA_BASE_URL
 from agents.state import AgentState
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ def route_task(state: AgentState) -> dict:
     """Router agent node. Classifies the task as simple or complex."""
     logger.info("[2/ROUTER] Classifying task complexity...")
 
-    llm = ChatOpenAI(model=ROUTER_MODEL, api_key=OPENAI_API_KEY, temperature=0)
+    llm = ChatOllama(model=ROUTER_MODEL, base_url=OLLAMA_BASE_URL, temperature=0)
     structured_llm = llm.with_structured_output(RouterOutput)
 
     system_content = """You are a task complexity classifier for a code editor AI assistant. Your job is to decide whether a coding request is SIMPLE or COMPLEX.
