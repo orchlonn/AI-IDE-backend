@@ -27,7 +27,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 CHAT_MODEL = "llama3.1:8b"
 ROUTER_MODEL = "llama3.1:8b"
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-EMBEDDING_MODEL = "text-embedding-3-small"
+EMBEDDING_MODEL = "intfloat/multilingual-e5-large"
 
 # RAG settings
 CHUNK_SIZE = 200

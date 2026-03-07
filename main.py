@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import config  # noqa: F401  — initialises logging on import
 
 from api.chat import router as chat_router
+from api.embed import router as embed_router
 from api.embeddings import router as embeddings_router
 from api.terminal import router as terminal_router
 
@@ -24,6 +25,7 @@ app.add_middleware(
 
 # Register routes
 app.include_router(chat_router)
+app.include_router(embed_router)
 app.include_router(embeddings_router)
 app.include_router(terminal_router)
 

@@ -1,11 +1,11 @@
-from openai import OpenAI
 from supabase import create_client
 
 from config import (
-    OPENAI_API_KEY, SUPABASE_URL, SUPABASE_KEY,
-    EMBEDDING_MODEL, CHUNK_SIZE, CHUNK_OVERLAP,
+    SUPABASE_URL, SUPABASE_KEY,
+    CHUNK_SIZE, CHUNK_OVERLAP,
     EMBEDDING_BATCH_SIZE, INSERT_BATCH_SIZE,
 )
+from rag.embed import embed_texts
 
 
 def chunk_file(file_path: str, content: str) -> list[dict]:
@@ -47,7 +47,6 @@ def chunk_project(file_contents: dict[str, str]) -> list[dict]:
 
 async def index_project(project_id: str) -> int:
     """Index a project's files into vector embeddings. Returns chunk count."""
-    openai = OpenAI(api_key=OPENAI_API_KEY)
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
     result = supabase.table("projects").select("file_contents").eq("id", project_id).single().execute()
@@ -64,12 +63,8 @@ async def index_project(project_id: str) -> int:
     embeddings: list[list[float]] = []
     for i in range(0, len(chunks), EMBEDDING_BATCH_SIZE):
         batch = chunks[i:i + EMBEDDING_BATCH_SIZE]
-        res = openai.embeddings.create(
-            model=EMBEDDING_MODEL,
-            input=[c["content"] for c in batch],
-        )
-        for item in res.data:
-            embeddings.append(item.embedding)
+        batch_embeddings = embed_texts([c["content"] for c in batch])
+        embeddings.extend(batch_embeddings)
 
     # Delete old chunks and insert new ones
     supabase.table("code_chunks").delete().eq("project_id", project_id).execute()
